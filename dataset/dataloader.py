@@ -9,7 +9,11 @@ del df[2]
 df['file_name'] = df['file_name'].apply(lambda x: x + 'g' if x.endswith('jp') else x)
 
 
-train_df, test_df = train_test_split(df, test_size=0.2)
-# we reset the indices to start from zero
-train_df.reset_index(drop=True, inplace=True)
-test_df.reset_index(drop=True, inplace=True)
+def splitdata(df):
+    train_df, test_df = train_test_split(df, test_size=0.2)
+    # we reset the indices to start from zero
+    train_df.reset_index(drop=True, inplace=True)
+    test_df.reset_index(drop=True, inplace=True)
+
+    return train_df, test_df
+
