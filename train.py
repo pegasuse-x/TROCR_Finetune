@@ -40,3 +40,39 @@ def compute_cer(pred_ids, label_ids):
     cer = cer_metric.compute(predictions=pred_str, references=label_str)
 
     return cer
+
+
+for epoch in range(10):  # loop over the dataset multiple times
+   # train
+   model.train()
+   train_loss = 0.0
+   for batch in tqdm(train_dataloader):
+      # get the inputs
+      for k,v in batch.items():
+        batch[k] = v.to(device)
+
+      # forward + backward + optimize
+      outputs = model(**batch)
+      loss = outputs.loss
+      loss.backward()
+      optimizer.step()
+      optimizer.zero_grad()
+
+      train_loss += loss.item()
+
+   print(f"Loss after epoch {epoch}:", train_loss/len(train_dataloader))
+    
+   # evaluate
+   model.eval()
+   valid_cer = 0.0
+   with torch.no_grad():
+     for batch in tqdm(eval_dataloader):
+       # run batch generation
+       outputs = model.generate(batch["pixel_values"].to(device))
+       # compute metrics
+       cer = compute_cer(pred_ids=outputs, label_ids=batch["labels"])
+       valid_cer += cer 
+
+   print("Validation CER:", valid_cer / len(eval_dataloader))
+
+model.save_pretrained(".")
