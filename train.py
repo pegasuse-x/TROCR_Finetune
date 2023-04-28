@@ -5,6 +5,8 @@
 
 from transformers import VisionEncoderDecoderModel
 from datasets import load_metric
+from transformers import AdamW
+from tqdm.notebook import tqdm
 import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
