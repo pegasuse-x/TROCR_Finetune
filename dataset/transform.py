@@ -6,6 +6,7 @@
 import torch
 from torch.utils.data import Dataset
 from PIL import Image
+from transformers import TrOCRProcessor
 
 from dataloader import *
 
@@ -35,4 +36,7 @@ class IAMDataset(Dataset):
 
         encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
         return encoding
+
+
+
 

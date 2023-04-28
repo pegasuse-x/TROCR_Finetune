@@ -75,4 +75,4 @@ for epoch in range(10):  # loop over the dataset multiple times
 
    print("Validation CER:", valid_cer / len(eval_dataloader))
 
-model.save_pretrained(".")
+model.save_pretrained("output/")
