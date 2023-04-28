@@ -4,6 +4,7 @@
 # Refer to the paper for details. (TROcr, 2021)
 
 from transformers import VisionEncoderDecoderModel
+from datasets import load_metric
 import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -25,3 +26,7 @@ model.config.no_repeat_ngram_size = 3
 model.config.length_penalty = 2.0
 model.config.num_beams = 4
 
+
+
+# evaluation based on  Character Error Rate (CER)
+cer_metric = load_metric("cer")
