@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 from PIL import Image
 from transformers import TrOCRProcessor
 
-from dataloader import *
+#from dataloader import *
 
 class IAMDataset(Dataset):
     def __init__(self, root_dir, df, processor, max_target_length=128):

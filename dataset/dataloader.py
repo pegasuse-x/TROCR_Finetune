@@ -1,9 +1,9 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from dataloader import IAMDataset
+from transform import IAMDataset
 from transformers import TrOCRProcessor
 
-df = pd.read_fwf('IAM/gt_test.txt', header=None)
+df = pd.read_fwf('../IAM/gt_test.txt', header=None)
 df.rename(columns={0: "file_name", 1: "text"}, inplace=True)
 del df[2]
 # some file names end with jp instead of jpg, let's fix this
@@ -23,12 +23,13 @@ test_df = splitdata(df)[1]
 
 
 processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
-train_dataset = IAMDataset(root_dir='IAM/image/',
+train_dataset = IAMDataset(root_dir='../IAM/image/',
                            df=train_df,
                            processor=processor)
-eval_dataset = IAMDataset(root_dir='IAM/image/',
+eval_dataset = IAMDataset(root_dir='../IAM/image/',
                            df=test_df,
                            processor=processor)
 
 
-
+print("Number of training examples:", len(train_dataset))
+print("Number of validation examples:", len(eval_dataset))
