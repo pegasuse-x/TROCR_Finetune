@@ -11,6 +11,7 @@ from transformers import AdamW
 from tqdm.notebook import tqdm
 import torch
 from .dataset.transform import *
+from .dataset.dataloader import processor, train_dataloader, eval_dataloader
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -45,6 +46,8 @@ def compute_cer(pred_ids, label_ids):
     return cer
 
 
+
+optimizer = AdamW(model.parameters(), lr = 5e-5)
 for epoch in range(10):  # loop over the dataset multiple times
    # train
    model.train()
@@ -80,10 +83,5 @@ for epoch in range(10):  # loop over the dataset multiple times
 
 model.save_pretrained("output/")
 
-processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
-train_dataset = IAMDataset(root_dir='IAM/image/',
-                           df=train_df,
-                           processor=processor)
-eval_dataset = IAMDataset(root_dir='IAM/image/',
-                           df=test_df,
-                           processor=processor)
+
+
