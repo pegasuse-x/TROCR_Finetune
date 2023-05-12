@@ -17,3 +17,11 @@ def splitdata(df):
 
     return train_df, test_df
 
+
+processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
+train_dataset = IAMDataset(root_dir='IAM/image/',
+                           df=train_df,
+                           processor=processor)
+eval_dataset = IAMDataset(root_dir='IAM/image/',
+                           df=test_df,
+                           processor=processor)
