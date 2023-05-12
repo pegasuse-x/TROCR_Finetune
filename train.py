@@ -4,10 +4,13 @@
 # Refer to the paper for details. (TROcr, 2021)
 
 from transformers import VisionEncoderDecoderModel
-from datasets import load_metric
+from transformers import TrOCRProcessor
+from datasets import *
+import evaluate
 from transformers import AdamW
 from tqdm.notebook import tqdm
 import torch
+from .dataset.transform import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -31,7 +34,7 @@ model.config.num_beams = 4
 
 
 # evaluation based on  Character Error Rate (CER)
-cer_metric = load_metric("cer")
+cer_metric = evaluate.load("cer")
 def compute_cer(pred_ids, label_ids):
     pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
     label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
@@ -76,3 +79,11 @@ for epoch in range(10):  # loop over the dataset multiple times
    print("Validation CER:", valid_cer / len(eval_dataloader))
 
 model.save_pretrained("output/")
+
+processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
+train_dataset = IAMDataset(root_dir='IAM/image/',
+                           df=train_df,
+                           processor=processor)
+eval_dataset = IAMDataset(root_dir='IAM/image/',
+                           df=test_df,
+                           processor=processor)
