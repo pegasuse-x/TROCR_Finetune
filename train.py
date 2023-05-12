@@ -10,14 +10,22 @@ import evaluate
 from transformers import AdamW
 from tqdm.notebook import tqdm
 import torch
-from .dataset.transform import *
-from .dataset.dataloader import processor, train_dataloader, eval_dataloader
+#from .dataset.transform import *
+from dataset.dataloader import processor, train_dataset, eval_dataset
+from torch.utils.data import DataLoader
+
+from multiprocessing import freeze_support
+
+train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=8)
+eval_dataloader = DataLoader(eval_dataset, batch_size=4, shuffle=True, num_workers=8)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-stage1")
 model.to(device)
 
+print ('model loaded succesfully')
+print('----------------------------')
 # set special tokens used for creating the decoder_input_ids from the labels
 model.config.decoder_start_token_id = processor.tokenizer.cls_token_id
 model.config.pad_token_id = processor.tokenizer.pad_token_id
@@ -32,8 +40,6 @@ model.config.no_repeat_ngram_size = 3
 model.config.length_penalty = 2.0
 model.config.num_beams = 4
 
-
-
 # evaluation based on  Character Error Rate (CER)
 cer_metric = evaluate.load("cer")
 def compute_cer(pred_ids, label_ids):
@@ -47,12 +53,22 @@ def compute_cer(pred_ids, label_ids):
 
 
 
+print("Dataloaded without error")
+print('-------------------------------------------------------------------')
+
+
+#def main(train_dataloader, eval_dataloader):
+
+
+
 optimizer = AdamW(model.parameters(), lr = 5e-5)
 for epoch in range(10):  # loop over the dataset multiple times
-   # train
-   model.train()
-   train_loss = 0.0
-   for batch in tqdm(train_dataloader):
+  # train
+  print('training started')
+  print('---------------------------------------------------')
+  model.train()
+  train_loss = 0.0
+  for batch in tqdm(train_dataloader):
       # get the inputs
       for k,v in batch.items():
         batch[k] = v.to(device)
@@ -66,20 +82,26 @@ for epoch in range(10):  # loop over the dataset multiple times
 
       train_loss += loss.item()
 
-   print(f"Loss after epoch {epoch}:", train_loss/len(train_dataloader))
+  print(f"Loss after epoch {epoch}:", train_loss/len(train_dataloader))
     
-   # evaluate
-   model.eval()
-   valid_cer = 0.0
-   with torch.no_grad():
-     for batch in tqdm(eval_dataloader):
-       # run batch generation
-       outputs = model.generate(batch["pixel_values"].to(device))
-       # compute metrics
-       cer = compute_cer(pred_ids=outputs, label_ids=batch["labels"])
-       valid_cer += cer 
+  # evaluate
+  model.eval()
+  valid_cer = 0.0
+  with torch.no_grad():
+    for batch in tqdm(eval_dataloader):
+      # run batch generation
+      outputs = model.generate(batch["pixel_values"].to(device))
+      # compute metrics
+      cer = compute_cer(pred_ids=outputs, label_ids=batch["labels"])
+      valid_cer += cer 
 
-   print("Validation CER:", valid_cer / len(eval_dataloader))
+  print("Validation CER:", valid_cer / len(eval_dataloader))
+
+
+#if __name__ == '__main__':
+  #main(train_dataloader, eval_dataloader)
+
+freeze_support()
 
 model.save_pretrained("output/")
 
