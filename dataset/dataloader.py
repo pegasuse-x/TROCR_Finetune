@@ -1,5 +1,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from dataloader import IAMDataset
+from transformers import TrOCRProcessor
 
 df = pd.read_fwf('IAM/gt_test.txt', header=None)
 df.rename(columns={0: "file_name", 1: "text"}, inplace=True)
