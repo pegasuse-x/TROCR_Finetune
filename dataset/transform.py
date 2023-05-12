@@ -3,6 +3,8 @@
 #(which can be used to resize + normalize images) and a RobertaTokenizer 
 #(which can be used to encode and decode text into/from input_ids).
 
+
+# chris is with me 
 import torch
 from torch.utils.data import Dataset
 from PIL import Image
