@@ -1,21 +1,53 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from .transform import IAMDataset
+#from .transform import IAMDataset
 from transformers import TrOCRProcessor
 from PIL import Image
-from .util import imshow
+#from .util import imshow
 import numpy as np 
 import cv2 as cv 
+import os 
+import csv
 
 from torch.utils.data import DataLoader
 
 print('started data processing')
 print('----------------------------------------------')
-df = pd.read_fwf('IAM/gt_test.txt', header=None)
+
+df = pd.read_fwf('../IAM/gt_test.txt', header=None)
 df.rename(columns={0: "file_name", 1: "text"}, inplace=True)
 del df[2]
 # some file names end with jp instead of jpg, let's fix this
 df['file_name'] = df['file_name'].apply(lambda x: x + 'g' if x.endswith('jp') else x)
+
+df.to_csv("data.csv", index=True)
+
+file_path = os.getcwd()
+csv_path = file_path + "/data.csv"
+
+labels = {}
+with open(csv_path, 'r') as data:
+    reader = csv.reader(data, delimiter=',')
+
+    for row in reader:
+        #print(f'idx: {row[0]}')
+        #print(f'file name: {row[1]}')
+        #print(f'label: {row[2]}')
+        
+        file_name = row[1]
+        label = row[2]
+
+        labels[file_name] = label
+
+print(f'labels: {labels}')
+
+
+
+def load_csv_file(csv_path):
+    assert csv_path.exists(), f'Label csv at {csv_path} does not exist'
+
+
+    pass
 
 
 def splitdata(df):
