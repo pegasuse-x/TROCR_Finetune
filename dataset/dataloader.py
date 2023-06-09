@@ -1,97 +1,147 @@
-import pandas as pd
-from sklearn.model_selection import train_test_split
-#from .transform import IAMDataset
-from transformers import TrOCRProcessor
-from PIL import Image
-#from .util import imshow
-import numpy as np 
-import cv2 as cv 
-import os 
+
 import csv
+import os
+from pathlib import Path
 
-from torch.utils.data import DataLoader
+import torch
+from PIL import Image
+from torch.utils.data import Dataset
+from transformers import TrOCRProcessor
 
-print('started data processing')
-print('----------------------------------------------')
+from .config import paths
+from .config import constants
+from .util import debug_print
 
-df = pd.read_fwf('../IAM/gt_test.txt', header=None)
-df.rename(columns={0: "file_name", 1: "text"}, inplace=True)
-del df[2]
-# some file names end with jp instead of jpg, let's fix this
-df['file_name'] = df['file_name'].apply(lambda x: x + 'g' if x.endswith('jp') else x)
 
-df.to_csv("data.csv", index=True)
 
-file_path = os.getcwd()
-csv_path = file_path + "/data.csv"
+#train_df = splitdata(df)[0]
+#test_df = splitdata(df)[1]
 
-labels = {}
-with open(csv_path, 'r') as data:
-    reader = csv.reader(data, delimiter=',')
 
-    for row in reader:
-        #print(f'idx: {row[0]}')
-        #print(f'file name: {row[1]}')
-        #print(f'label: {row[2]}')
-        
-        file_name = row[1]
-        label = row[2]
+def load_csv_file(csv_path) -> dict[str, str]:
+    assert csv_path.exists(), f"Label csv at {csv_path} does not exist."
 
-        labels[file_name] = label
+    labels: dict[str, str] = {}
+    with open(csv_path, "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        for row in reader:
+            label = row[2]
+            image_name = row[1]
+            labels[image_name] = label
 
+    return labels
+#print('###################################')
+#print(f'labels: {load_csv_file(paths.label_file)}')
+
+#def load_filepaths_and_labels(data_dir: Path = paths.train_dir) -> tuple[list, list]:
+#    sample_paths: list[str] = []
+#    labels: list[str] = []
+
+#    label_dict = load_csv_file()
+
+#    for file_name in os.listdir(data_dir):
+#        path = data_dir / file_name
+
+#        if file_name.endswith(".jpg") or file_name.endswith(".png"):
+#            assert file_name in label_dict, f"No label for image '{file_name}'"
+#            label = label_dict[file_name]
+
+#            sample_paths.append(path)
+#            labels.append(label)
+
+#    debug_print(f"Loaded {len(sample_paths)} samples from {data_dir}")
+#    assert len(sample_paths) == len(labels)
+#    return sample_paths, labels
+
+def load_filepaths_and_labels(data_dir) -> tuple[list, list]:
+    sample_paths: list[str] = []
+    labels: list[str] = []
+
+    label_dict = load_csv_file(data_dir)
+
+    with open (data_dir, 'r') as data:
+        reader = csv.reader(data, delimiter=',')
+        for row in reader: 
+            file_name = row[1]
+            label = row[2]
+
+            if file_name.endswith(".jpg") or file_name.endswith(".png"):
+                assert file_name in label_dict, f"No label for image '{file_name}'"
+                label = label_dict[file_name]
+
+                sample_paths.append(file_name)
+                labels.append(label)
+
+    debug_print(f"Loaded {len(sample_paths)} samples from {data_dir}")
+
+    assert len(sample_paths) == len(labels)
+    return sample_paths, labels
+
+pathss, labels = load_filepaths_and_labels(paths.train_dir)
+#print('###################################')
+print(f'path: {pathss}')
+#print('###################################')
 print(f'labels: {labels}')
-
-
-
-def load_csv_file(csv_path):
-    assert csv_path.exists(), f'Label csv at {csv_path} does not exist'
-
-
-    pass
-
-
-def splitdata(df):
-    train_df, test_df = train_test_split(df, test_size=0.2)
-    # we reset the indices to start from zero
-    train_df.reset_index(drop=True, inplace=True)
-    test_df.reset_index(drop=True, inplace=True)
-
-    return train_df, test_df
-
-train_df = splitdata(df)[0]
-test_df = splitdata(df)[1]
-
+#print('###################################')
 
 print('data split complete')
-print('----------------------------------------------------')
-processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
-train_dataset = IAMDataset(root_dir='IAM/image/',
-                           df=train_df,
-                           processor=processor)
-eval_dataset = IAMDataset(root_dir='IAM/image/',
-                           df=test_df,
-                           processor=processor)
+#print('----------------------------------------------------')
 
-# check 
 
-#print('check')
-#print("Number of training examples:", len(train_dataset))
-#print("Number of validation examples:", len(eval_dataset))
 
-#encoding = train_dataset[0]
-#for k,v in encoding.items():
-#  print(k, v.shape)
+class IAMDataset(Dataset):
+    def __init__(self, data_dir: Path, processor: TrOCRProcessor, max_target_length=128):
+        self.image_name_list, self.label_list = load_filepaths_and_labels(data_dir)
+        self.processor = processor
+        self.max_target_length = max_target_length # max([constants.word_len_padding] + [len(label) for label in self.label_list])
 
-#print('-----------------------------------')
+    def __len__(self):
+        return len(self.image_name_list)
 
-#image = Image.open(train_dataset.root_dir + train_df['file_name'][0]).convert("RGB")
-#image = np.array(image.getdata()).reshape(image.size[0], image.size[1], 3)
-#print(image.shape)
-#imshow(image)
+    def __getitem__(self, idx):
+        image = Image.open(self.image_name_list[idx]).convert("RGB")
+        image_tensor: torch.Tensor = self.processor(image, return_tensors="pt").pixel_values[0]
+        
+        # add labels (input_ids) by encoding the text
+        
+        label = self.label_list[idx]
+        label_tensor = self.processor.tokenizer(
+            label,
+            return_tensors="pt",
+            padding=True,
+            pad_to_multiple_of=self._max_label_len,
+        ).input_ids[0]
 
-#image.show()
-#labels = encoding['labels']
-#labels[labels == -100] = processor.tokenizer.pad_token_id
-#label_str = processor.decode(labels, skip_special_tokens=True)
-#print("-----------------")
-#print(label_str)
+
+        return {"idx" : idx, "input" : image_tensor, "label" : label_tensor}
+    
+    def get_label(self, idx) -> str:
+        assert 0 <= idx < len(self.label_list), f"id {idx} outside of bounds [0, {len(self.label_list)}]"
+        return self.label_list[idx]
+
+    def get_path(self, idx) -> str:
+        assert 0 <= idx < len(self.label_list), f"id {idx} outside of bounds [0, {len(self.label_list)}]"
+        return self.image_name_list[idx]
+
+class MemoryDataset(Dataset):
+    def __init__(self, images: list[Image.Image], processor: TrOCRProcessor ):
+        self.images = images 
+        self.processor = processor
+    
+    def __len__(self):
+        return len(self.images)
+    
+    def __getitem__(self, idx):
+        image = self.images[idx].convert("RGB")
+        image_tensor: torch.Tensor = self.processor(image, return_tensors="pt").pixel_values[0]
+
+        # create fake label
+        label_tensor: torch.Tensor = self.processor.tokenizer(
+            "",
+            return_tensors="pt",
+        ).input_ids[0]
+
+        return {"idx": idx, "input": image_tensor, "label": label_tensor}
+
+
+        
